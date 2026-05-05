@@ -16,12 +16,106 @@ STORAGE_TARGET = f"storage:{STORAGE_PORT}"
 
 INDEX_KEY = "marketplace:items_index"
 
-# Auction subscribers (kept in-memory for streaming updates)
-ITEMS_LOCK = asyncio.Lock()
-AUCTION_SUBSCRIBERS = {}  # item_id -> list of asyncio.Queue
+class ItemAuctionTracker:
+    def __init__(self, item_id):
+        self.item_id = item_id
+        self.subscribers = {} #sub id -> asyncio.Queue for updates
+        self.lock = asyncio.Lock()
+        self.item = None  # Cache of the current item state
+        self.bids = asyncio.Queue()  # Queue for incoming bids to this item
+        self.polling_task = None
+        self.bids_task = None
 
+
+    async def startup(self):
+        async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
+            stub = kv_pb2_grpc.StorageServiceStub(channel)
+            try:
+                resp = await stub.GetItem(kv_pb2.GetItemRequest(item_id=self.item_id))
+                if resp.item:
+                    # If item exists, start polling for updates
+                    self.item = resp.item
+                    asyncio.create_task(self.poll())
+            except grpc.aio.AioRpcError as e:
+                print(f"Error initializing tracker for item {self.item_id}: {e}")
+
+    async def poll(self):
+        async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
+            stub = kv_pb2_grpc.StorageServiceStub(channel)
+            while True:
+                await asyncio.sleep(5)
+                try:
+                    resp = await stub.GetItem(kv_pb2.GetItemRequest(item_id=self.item_id))
+                    if not resp.item:
+                        # Item was deleted, notify subscribers and exit
+                        await self._notify_subscribers(kv_pb2.AuctionEvent(
+                            item_id=self.item_id,
+                            event_type=kv_pb2.AuctionEvent.DELETED
+                        ))
+                        break
+                    
+                    if resp.item.version != self.item.version:
+                        # Item was updated, notify subscribers
+                        if resp.item.current_price != self.item.current_price:
+                            await self._notify_subscribers(kv_pb2.AuctionEvent(
+                                item_id=self.item_id,
+                                event_type=kv_pb2.AuctionEvent.NEW_BID,
+                                item=resp.item
+                            ))
+                        else:
+                            await self._notify_subscribers(kv_pb2.AuctionEvent(
+                                item_id=self.item_id,
+                                event_type=kv_pb2.AuctionEvent.UPDATED,
+                                item=self.item
+                            ))
+                        self.item = resp.item
+
+                except grpc.aio.AioRpcError as e:
+                    print(f"Error polling item {self.item_id}: {e}")
+                await asyncio.sleep(5)  # Poll every second
+
+    async def _notify_subscribers(self, event):
+        async with self.lock:
+            subs = list(self.subscribers.get(self.item_id, []))
+        for q in subs:
+            try:
+                await q.put(event)
+            except Exception:
+                pass
+
+    async def subscribe(self):
+        q = asyncio.Queue()
+        async with self.lock:
+            sub_id = max(self.subscribers.keys(), default=0) + 1
+            self.subscribers[sub_id] = q
+        return sub_id, q
+    
+    async def unsubscribe(self, sub_id):
+        async with self.lock:
+            if sub_id in self.subscribers:
+                del self.subscribers[sub_id]
+    
+    def __delete__(self):
+        for q in self.subscribers.get(self.item_id, []):
+            try:
+                q.shutdown()  # Signal to subscribers that this tracker is being deleted
+            except Exception:
+                pass
 
 class MarketplaceFrontend(kv_pb2_grpc.MarketplaceServiceServicer):
+    def __init__(self):
+        super().__init__()
+        self.lock = asyncio.Lock()
+        self.active_trackers = {}  # item_id -> auction tracker
+
+    async def _get_or_create_tracker(self, item_id):
+        async with self.lock:
+            if item_id not in self.active_trackers:
+                tracker = ItemAuctionTracker(item_id)
+                self.active_trackers[item_id] = tracker
+                asyncio.create_task(tracker._startup())
+            return self.active_trackers[item_id]
+
     async def CreateItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
@@ -97,15 +191,6 @@ class MarketplaceFrontend(kv_pb2_grpc.MarketplaceServiceServicer):
                 subs = AUCTION_SUBSCRIBERS.get(item_id, [])
                 if q in subs:
                     subs.remove(q)
-
-    def _notify(self, item_id, event):
-        # sync helper called from async methods; queues are asyncio.Queue
-        subs = list(AUCTION_SUBSCRIBERS.get(item_id, []))
-        for q in subs:
-            try:
-                q.put_nowait(event)
-            except Exception:
-                pass
  
 
 async def serve():
