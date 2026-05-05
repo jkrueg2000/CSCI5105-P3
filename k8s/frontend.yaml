@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - port: 50051
+      targetPort: 50051
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: 12345
+    spec:
+      containers:
+        - name: frontend
+          image: kv-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+            - containerPort: 12345
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PORT
+              value: "50051"
+            - name: STORAGE_PORT
+              value: "50052"
+
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa-custom
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Pods
+      pods:
+        metric: 
+          name: queue_length #Our exact metric is subject to change but we do plan on using the Prometheus approach
+        target:
+          type: AverageValue
+          averageValue: "10"
