@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package marketplace;
 
-// Required Client-Service Operations 
-service FrontendService {
+// Required Client-Facing Operations 
+service MarketplaceService {
   // Add a new item listing
   rpc CreateItem(CreateItemRequest) returns (ActionResponse);
   
@@ -24,28 +24,16 @@ service FrontendService {
   rpc JoinAuction(AuctionRequest) returns (stream AuctionEvent);
 }
 
-// Service-Storage Operations
-service StorageService {
-  rpc CreateItem(CreateItemRequest) returns (ActionResponse);
-
-  rpc GetItem(GetItemRequest) returns (MarketplaceItem);
-
-  rpc SearchItems(SearchRequest) returns (SearchResponse);
-
-  rpc UpdateItem(UpdateItemRequest) returns (ActionResponse);
-
-  rpc PlaceBid(BidRequest) returns (ActionResponse);
-
-  rpc AuctionPoll(AuctionRequest) returns (AuctionEvent);
-}
-
 //  4.1 Controller & Internal Coordination 
 service InternalService {
+  // Heartbeat-based failure detection
+  rpc Heartbeat(Ping) returns (Pong);
+  
   // Manage replica membership and state transfer
   rpc ReplicateData(SyncRequest) returns (SyncResponse);
   
   // Recovery: Replacement replica catches up with state
-  rpc GetFullState(StateRequest) returns (StateResponse); 
+  rpc GetFullState(StateRequest) returns (StateResponse);
 }
 
 //  3.1 Required Item Schema 
@@ -137,22 +125,15 @@ message StateResponse {
   repeated MarketplaceItem all_items = 1;
 }
 
-service Health {
-  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
-
-  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
-}
-
-message HealthCheckRequest {
-  string service = 1;
-}
-
-message HealthCheckResponse {
-  enum ServingStatus {
-    UNKNOWN = 0;
-    SERVING = 1;
-    NOT_SERVING = 2;
-    SERVICE_UNKNOWN = 3;  // Used only by the Watch method.
+message Ping {
+  string node_id = 1;
+  enum NodeType {
+    SERVICE = 0;
+    STORAGE = 1;
   }
-  ServingStatus status = 1;
+  NodeType type = 2;
+}
+
+message Pong {
+  bool healthy = 1;
 }

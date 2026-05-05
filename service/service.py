@@ -6,12 +6,12 @@ import grpc
 import kv_pb2
 import kv_pb2_grpc
 
-POD_NAME = os.environ.get("POD_NAME", "frontend")
+POD_NAME = os.environ.get("POD_NAME", "SERVICE")
 PORT = os.environ.get("PORT", "50051")
 
 # Storage configuration (external storage service via gRPC)
 STORAGE_PORT = os.environ.get("STORAGE_PORT", "50052")
-# Use a single replicated storage service; frontend does not shard or replicate
+# Use a single replicated storage service; service does not shard or replicate
 STORAGE_TARGET = f"storage:{STORAGE_PORT}"
 
 INDEX_KEY = "marketplace:items_index"
