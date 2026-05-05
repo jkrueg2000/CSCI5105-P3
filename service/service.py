@@ -29,7 +29,7 @@ class ItemAuctionTracker:
 
     async def startup(self):
         async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             try:
                 resp = await stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
                 if resp.item:
@@ -41,7 +41,7 @@ class ItemAuctionTracker:
 
     async def poll(self):
         async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             while True:
                 await asyncio.sleep(5)
                 try:
@@ -119,7 +119,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def CreateItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             try:
                 resp = await stub.CreateItem(request)
                 return resp
@@ -131,7 +131,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def GetItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             try:
                 resp = await stub.GetItem(request)
                 return resp
@@ -143,7 +143,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def SearchItems(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             try:
                 resp = await stub.SearchItems(request)
                 return resp
@@ -155,7 +155,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def UpdateItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             try:
                 resp = await stub.UpdateItem(request)
                 return resp
@@ -167,7 +167,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def PlaceBid(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.MarketplaceService(channel)
             try:
                 resp = await stub.PlaceBid(request)
                 return resp

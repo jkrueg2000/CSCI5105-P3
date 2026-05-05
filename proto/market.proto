@@ -24,18 +24,6 @@ service MarketplaceService {
   rpc JoinAuction(AuctionRequest) returns (stream AuctionEvent);
 }
 
-//  4.1 Controller & Internal Coordination 
-service InternalService {
-  // Heartbeat-based failure detection
-  rpc Heartbeat(Ping) returns (Pong);
-  
-  // Manage replica membership and state transfer
-  rpc ReplicateData(SyncRequest) returns (SyncResponse);
-  
-  // Recovery: Replacement replica catches up with state
-  rpc GetFullState(StateRequest) returns (StateResponse);
-}
-
 //  3.1 Required Item Schema 
 message MarketplaceItem {
   string item_id = 1;
@@ -46,8 +34,8 @@ message MarketplaceItem {
   double starting_price = 6;
   double current_price = 7;
   int32 quantity = 8;
-  string status = 9;             // "AVAILABLE", "SOLD", "AUCTION_ACTIVE"
-  uint64 version = 10;           // version or sequence_number for consistency
+  string status = 9; // "AVAILABLE", "SOLD", "AUCTION_ACTIVE"
+  uint64 version = 10; // version or sequence_number for consistency
 }
 
 //  Message Definitions 
@@ -61,8 +49,8 @@ message GetItemRequest {
 }
 
 message SearchRequest {
-  string query = 1;              // keyword
-  string category = 2;           // optional filter
+  string query = 1; // keyword
+  string category = 2; // optional filter
 }
 
 message SearchResponse {
@@ -75,7 +63,7 @@ message UpdateItemRequest {
   optional string description = 2;
   optional int32 quantity = 3;
   optional string status = 4;
-  uint64 expected_version = 5;    // For optimistic concurrency control
+  uint64 expected_version = 5; // For optimistic concurrency control
 }
 
 message BidRequest {
@@ -104,36 +92,4 @@ message AuctionEvent {
   EventType type = 1;
   MarketplaceItem item_snapshot = 2;
   string event_description = 3;
-}
-
-//  Coordination Messages 
-
-message SyncRequest {
-  MarketplaceItem item = 1;
-  string primary_id = 2;
-}
-
-message SyncResponse {
-  bool success = 1;
-}
-
-message StateRequest {
-  string replica_id = 1;
-}
-
-message StateResponse {
-  repeated MarketplaceItem all_items = 1;
-}
-
-message Ping {
-  string node_id = 1;
-  enum NodeType {
-    SERVICE = 0;
-    STORAGE = 1;
-  }
-  NodeType type = 2;
-}
-
-message Pong {
-  bool healthy = 1;
 }
