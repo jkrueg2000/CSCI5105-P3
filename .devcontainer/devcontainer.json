@@ -6,7 +6,6 @@
     "ghcr.io/devcontainers/features/common-utils:2": {}
   },
 
-  /* Installing CPU PyTorch to be significantly smaller */
   "postCreateCommand": "python -m pip install --root-user-action=ignore -r requirements.txt",
   
   /* Add workspace folder as an env variable in the VS Code remote so the expansion of the VSCode var works */
