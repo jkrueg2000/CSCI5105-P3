@@ -29,9 +29,9 @@ class ItemAuctionTracker:
 
     async def startup(self):
         async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = kv_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
-                resp = await stub.GetItem(kv_pb2.GetItemRequest(item_id=self.item_id))
+                resp = await stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
                 if resp.item:
                     # If item exists, start polling for updates
                     self.item = resp.item
@@ -41,31 +41,31 @@ class ItemAuctionTracker:
 
     async def poll(self):
         async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = kv_pb2_grpc.StorageServiceStub(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             while True:
                 await asyncio.sleep(5)
                 try:
-                    resp = await stub.GetItem(kv_pb2.GetItemRequest(item_id=self.item_id))
+                    resp = await stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
                     if not resp.item:
                         # Item was deleted, notify subscribers and exit
-                        await self._notify_subscribers(kv_pb2.AuctionEvent(
+                        await self._notify_subscribers(market_pb2.AuctionEvent(
                             item_id=self.item_id,
-                            event_type=kv_pb2.AuctionEvent.DELETED
+                            event_type=market_pb2.AuctionEvent.DELETED
                         ))
                         break
                     
                     if resp.item.version != self.item.version:
                         # Item was updated, notify subscribers
                         if resp.item.current_price != self.item.current_price:
-                            await self._notify_subscribers(kv_pb2.AuctionEvent(
+                            await self._notify_subscribers(market_pb2.AuctionEvent(
                                 item_id=self.item_id,
-                                event_type=kv_pb2.AuctionEvent.NEW_BID,
+                                event_type=market_pb2.AuctionEvent.NEW_BID,
                                 item=resp.item
                             ))
                         else:
-                            await self._notify_subscribers(kv_pb2.AuctionEvent(
+                            await self._notify_subscribers(market_pb2.AuctionEvent(
                                 item_id=self.item_id,
-                                event_type=kv_pb2.AuctionEvent.UPDATED,
+                                event_type=market_pb2.AuctionEvent.UPDATED,
                                 item=self.item
                             ))
                         self.item = resp.item
