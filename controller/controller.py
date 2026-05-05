@@ -7,6 +7,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../proto/src')))
 import market_pb2
 import market_pb2_grpc
+import random
 
 class MarketplaceController(market_pb2_grpc.InternalServiceServicer):
     def __init__(self):
@@ -18,6 +19,60 @@ class MarketplaceController(market_pb2_grpc.InternalServiceServicer):
         
         # Start failure detection thread
         threading.Thread(target=self._monitor_nodes, daemon=True).start()
+
+    def CreateItem(self, request, context):
+        service_node = self._get_random_service_node()
+        if not service_node:
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            return market_pb2.ActionResponse(success=False, message="No service nodes available")
+        
+        return service_node["stub"].CreateItem(request)
+
+    def GetItem(self, request, context):
+        service_node = self._get_random_service_node()
+        if not service_node:
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            return market_pb2.MarketplaceItem()
+        
+        return service_node["stub"].GetItem(request)
+    
+    def UpdateItem(self, request, context):
+        service_node = self._get_random_service_node()
+        if not service_node:
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            return market_pb2.MarketplaceItem()
+        
+        return service_node["stub"].UpdateItem(request)
+    
+    def SearchItems(self, request, context):
+        service_node = self._get_random_service_node()
+        if not service_node:
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            return market_pb2.MarketplaceItem()
+        
+        return service_node["stub"].SearchItems(request)
+
+    def PlaceBid(self, request, context):
+        service_node = self._get_random_service_node()
+        if not service_node:
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            return market_pb2.MarketplaceItem()
+        
+        return service_node["stub"].PlaceBid(request)
+    
+    def JoinAuction(self, request, context):
+        service_node = self._get_random_service_node()
+        if not service_node:
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            return market_pb2.MarketplaceItem()
+        
+        yield from service_node["stub"].JoinAuction(request)
+
+    def _get_random_service_node(self):
+        """Simple Load Balancer"""
+        with self.lock:
+            services = [n for id, n in self.nodes.items() if n["type"] == market_pb2.Ping.SERVICE]
+            return random.choice(services) if services else None
 
     def Heartbeat(self, request, context):
         with self.lock:
@@ -48,17 +103,20 @@ class MarketplaceController(market_pb2_grpc.InternalServiceServicer):
                     self._handle_failure(node_id)
 
     def _handle_failure(self, node_id):
-        """Logic to promote a new primary if the current one dies"""
-        del self.health_map[node_id]
-        if node_id == self.primary_id:
-            self.primary_id = None
-            # Find a new storage node to promote
-            for nid, info in self.nodes.items():
-                if nid in self.health_map and info["type"] == market_pb2.Ping.STORAGE:
-                    self.primary_id = nid
-                    print(f"New Primary elected: {self.primary_id}")
-                    break
-        del self.nodes[node_id]
+        node_info = self.nodes.pop(node_id, None)
+        self.health_map.pop(node_id, None)
+        
+        if node_info and node_info["type"] == market_pb2.Ping.STORAGE:
+            print(f"Storage node {node_id} removed")
+            if node_id == self.primary_id:
+                print("Primary failed! Initiating new election...")
+                self.primary_id = None
+                # Elect new primary if possible
+                for id, info in self.nodes.items():
+                    if info["type"] == market_pb2.Ping.STORAGE:
+                        self.primary_id = id
+                        print(f"New Primary elected: {id}")
+                        break
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
