@@ -24,6 +24,30 @@ service MarketplaceService {
   rpc JoinAuction(AuctionRequest) returns (stream AuctionEvent);
 }
 
+service StorageService {
+  rpc CreateItem(CreateItemRequest) returns (ActionResponse);
+
+  rpc GetItem(GetItemRequest) returns (MarketplaceItem);
+
+  rpc SearchItems(SearchRequest) returns (SearchResponse);
+
+  rpc UpdateItem(UpdateItemRequest) returns (ActionResponse);
+
+  rpc PlaceBid(BidRequest) returns (ActionResponse);
+
+  rpc AuctionPoll(AuctionRequest) returns (AuctionEvent);
+
+  rpc ReplicateData(SyncRequest) returns (SyncResponse);
+}
+
+service ControllerService {
+  rpc UpdateBackups(UpdateItemRequest) returns (ActionResponse);
+  
+  rpc BidUpdateBackups(BidRequest) returns (ActionResponse);
+
+  rpc ReplicateData(SyncRequest) returns (SyncResponse);
+}
+
 //  3.1 Required Item Schema 
 message MarketplaceItem {
   string item_id = 1;
@@ -92,4 +116,18 @@ message AuctionEvent {
   EventType type = 1;
   MarketplaceItem item_snapshot = 2;
   string event_description = 3;
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;  // Used only by the Watch method.
+  }
+  ServingStatus status = 1;
 }

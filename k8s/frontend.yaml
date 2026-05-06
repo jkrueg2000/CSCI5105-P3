@@ -27,7 +27,7 @@ spec:
         app: frontend
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: 12345
+        prometheus.io/port: "12345"
     spec:
       containers:
         - name: frontend
@@ -45,13 +45,35 @@ spec:
               value: "50051"
             - name: STORAGE_PORT
               value: "50052"
+          
+          # REQUIRED FOR CPU AUTOSCALING: 
+          # Defines the baseline CPU this pod expects to use.
+          # 100m = 100 millicores (0.1 CPU). Adjust this based on your app's actual load.
+          resources:
+            requests:
+              cpu: "100m"
+          
+          # Native K8s gRPC Liveness Probe (Restarts failed nodes)
+          livenessProbe:
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            
+          # Native K8s gRPC Readiness Probe (Stops routing traffic if busy/booting)
+          readinessProbe:
+            grpc:
+              port: 50051
+            initialDelaySeconds: 5
+            periodSeconds: 5
 
 ---
 
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: frontend-hpa-custom
+  name: frontend-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -60,10 +82,10 @@ spec:
   minReplicas: 1
   maxReplicas: 5
   metrics:
-    - type: Pods
-      pods:
-        metric: 
-          name: queue_length #Our exact metric is subject to change but we do plan on using the Prometheus approach
+    - type: Resource
+      resource:
+        name: cpu
         target:
-          type: AverageValue
-          averageValue: "10"
+          type: Utilization
+          # Scale up when average CPU across all pods hits 70% of their requested amount
+          averageUtilization: 70

@@ -1,0 +1,97 @@
+# 1. Primary Service: Routes ONLY to the active primary node
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-primary
+spec:
+  type: ClusterIP
+  selector:
+    app: storage
+    role: primary # <--- The critical selector for routing to the primary
+  ports:
+    - port: 50052
+      targetPort: 50052
+
+---
+
+# 2. Headless Service: For peer discovery and controller monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-headless
+spec:
+  clusterIP: None
+  selector:
+    app: storage # Selects ALL storage nodes, regardless of role
+  ports:
+    - port: 50052
+      targetPort: 50052
+
+---
+
+# 3. StatefulSet for Storage Nodes
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage
+spec:
+  serviceName: "storage-headless"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: storage
+  template:
+    metadata:
+      labels:
+        app: storage
+        # NOTE: We intentionally DO NOT put 'role: primary' here.
+        # Your Python controller must inject that label dynamically at runtime!
+    spec:
+      containers:
+        - name: storage
+          image: kv-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50052
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PORT
+              value: "50052"
+              
+          # Native K8s gRPC Health Probes
+          livenessProbe:
+            grpc:
+              port: 50052
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+
+---
+
+# 4. RBAC Permissions (Required for your Watch-style Controller)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-watcher-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list", "patch", "update"] # Added patch/update so it can modify labels
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: watch-pods-binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: Role
+  name: pod-watcher-role
+  apiGroup: rbac.authorization.k8s.io
