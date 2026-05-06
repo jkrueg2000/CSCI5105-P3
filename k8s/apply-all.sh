@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
-kubectl.exe apply -f "k8s/storage-service.yaml"
-kubectl.exe apply -f "k8s/storage-statefulset.yaml"
-kubectl.exe apply -f "k8s/frontend-deployment.yaml"
-kubectl.exe apply -f "k8s/frontend-service.yaml"
+# Apply the single valid config: frontend.yaml
+kubectl apply -f frontend.yaml

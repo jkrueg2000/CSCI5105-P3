@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
-kubectl.exe delete -f "k8s/storage-service.yaml"
-kubectl.exe delete -f "k8s/storage-statefulset.yaml"
-kubectl.exe delete -f "k8s/frontend-deployment.yaml"
-kubectl.exe delete -f "k8s/frontend-service.yaml"
+# Delete the frontend resources defined in frontend.yaml
+kubectl delete -f frontend.yaml
