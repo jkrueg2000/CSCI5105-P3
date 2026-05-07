@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cmarket.proto\x12\x0bmarketplace\"\xcd\x01\n\x0fMarketplaceItem\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x11\n\tseller_id\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x16\n\x0estarting_price\x18\x06 \x01(\x01\x12\x15\n\rcurrent_price\x18\x07 \x01(\x01\x12\x10\n\x08quantity\x18\x08 \x01(\x05\x12\x0e\n\x06status\x18\t \x01(\t\x12\x0f\n\x07version\x18\n \x01(\x04\"?\n\x11\x43reateItemRequest\x12*\n\x04item\x18\x01 \x01(\x0b\x32\x1c.marketplace.MarketplaceItem\"!\n\x0eGetItemRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\"0\n\rSearchRequest\x12\r\n\x05query\x18\x01 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x02 \x01(\t\"=\n\x0eSearchResponse\x12+\n\x05items\x18\x01 \x03(\x0b\x32\x1c.marketplace.MarketplaceItem\"\xac\x01\n\x11UpdateItemRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x18\n\x0b\x64\x65scription\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x15\n\x08quantity\x18\x03 \x01(\x05H\x01\x88\x01\x01\x12\x13\n\x06status\x18\x04 \x01(\tH\x02\x88\x01\x01\x12\x18\n\x10\x65xpected_version\x18\x05 \x01(\x04\x42\x0e\n\x0c_descriptionB\x0b\n\t_quantityB\t\n\x07_status\"D\n\nBidRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x11\n\tbidder_id\x18\x02 \x01(\t\x12\x12\n\nbid_amount\x18\x03 \x01(\x01\"G\n\x0e\x41\x63tionResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x13\n\x0bnew_version\x18\x03 \x01(\x04\"2\n\x0e\x41uctionRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\xd2\x01\n\x0c\x41uctionEvent\x12\x31\n\x04type\x18\x01 \x01(\x0e\x32#.marketplace.AuctionEvent.EventType\x12\x33\n\ritem_snapshot\x18\x02 \x01(\x0b\x32\x1c.marketplace.MarketplaceItem\x12\x19\n\x11\x65vent_description\x18\x03 \x01(\t\"?\n\tEventType\x12\x0b\n\x07NEW_BID\x10\x00\x12\x11\n\rSTATUS_CHANGE\x10\x01\x12\x12\n\x0e\x41UCTION_CLOSED\x10\x02\x32\xc3\x03\n\x12MarketplaceService\x12I\n\nCreateItem\x12\x1e.marketplace.CreateItemRequest\x1a\x1b.marketplace.ActionResponse\x12\x44\n\x07GetItem\x12\x1b.marketplace.GetItemRequest\x1a\x1c.marketplace.MarketplaceItem\x12\x46\n\x0bSearchItems\x12\x1a.marketplace.SearchRequest\x1a\x1b.marketplace.SearchResponse\x12I\n\nUpdateItem\x12\x1e.marketplace.UpdateItemRequest\x1a\x1b.marketplace.ActionResponse\x12@\n\x08PlaceBid\x12\x17.marketplace.BidRequest\x1a\x1b.marketplace.ActionResponse\x12G\n\x0bJoinAuction\x12\x1b.marketplace.AuctionRequest\x1a\x19.marketplace.AuctionEvent0\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cmarket.proto\x12\x0bmarketplace\"\xcd\x01\n\x0fMarketplaceItem\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x11\n\tseller_id\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x16\n\x0estarting_price\x18\x06 \x01(\x01\x12\x15\n\rcurrent_price\x18\x07 \x01(\x01\x12\x10\n\x08quantity\x18\x08 \x01(\x05\x12\x0e\n\x06status\x18\t \x01(\t\x12\x0f\n\x07version\x18\n \x01(\x04\"Y\n\x11\x43reateItemRequest\x12*\n\x04item\x18\x01 \x01(\x0b\x32\x1c.marketplace.MarketplaceItem\x12\x18\n\x10is_replica_write\x18\x0f \x01(\x08\"!\n\x0eGetItemRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\"0\n\rSearchRequest\x12\r\n\x05query\x18\x01 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x02 \x01(\t\"=\n\x0eSearchResponse\x12+\n\x05items\x18\x01 \x03(\x0b\x32\x1c.marketplace.MarketplaceItem\"\xc6\x01\n\x11UpdateItemRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x18\n\x0b\x64\x65scription\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x15\n\x08quantity\x18\x03 \x01(\x05H\x01\x88\x01\x01\x12\x13\n\x06status\x18\x04 \x01(\tH\x02\x88\x01\x01\x12\x18\n\x10\x65xpected_version\x18\x05 \x01(\x04\x12\x18\n\x10is_replica_write\x18\x0f \x01(\x08\x42\x0e\n\x0c_descriptionB\x0b\n\t_quantityB\t\n\x07_status\"^\n\nBidRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x11\n\tbidder_id\x18\x02 \x01(\t\x12\x12\n\nbid_amount\x18\x03 \x01(\x01\x12\x18\n\x10is_replica_write\x18\x0f \x01(\x08\"G\n\x0e\x41\x63tionResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x13\n\x0bnew_version\x18\x03 \x01(\x04\"2\n\x0e\x41uctionRequest\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\xd2\x01\n\x0c\x41uctionEvent\x12\x31\n\x04type\x18\x01 \x01(\x0e\x32#.marketplace.AuctionEvent.EventType\x12\x33\n\ritem_snapshot\x18\x02 \x01(\x0b\x32\x1c.marketplace.MarketplaceItem\x12\x19\n\x11\x65vent_description\x18\x03 \x01(\t\"?\n\tEventType\x12\x0b\n\x07NEW_BID\x10\x00\x12\x11\n\rSTATUS_CHANGE\x10\x01\x12\x12\n\x0e\x41UCTION_CLOSED\x10\x02\":\n\x0bSyncRequest\x12+\n\x05items\x18\x01 \x03(\x0b\x32\x1c.marketplace.MarketplaceItem\"0\n\x0cSyncResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"%\n\x12HealthCheckRequest\x12\x0f\n\x07service\x18\x01 \x01(\t\"\xa6\x01\n\x13HealthCheckResponse\x12>\n\x06status\x18\x01 \x01(\x0e\x32..marketplace.HealthCheckResponse.ServingStatus\"O\n\rServingStatus\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0b\n\x07SERVING\x10\x01\x12\x0f\n\x0bNOT_SERVING\x10\x02\x12\x13\n\x0fSERVICE_UNKNOWN\x10\x03\"\x0f\n\rBackupRequest\"\x1e\n\x0e\x42\x61\x63kupResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x32\xc3\x03\n\x12MarketplaceService\x12I\n\nCreateItem\x12\x1e.marketplace.CreateItemRequest\x1a\x1b.marketplace.ActionResponse\x12\x44\n\x07GetItem\x12\x1b.marketplace.GetItemRequest\x1a\x1c.marketplace.MarketplaceItem\x12\x46\n\x0bSearchItems\x12\x1a.marketplace.SearchRequest\x1a\x1b.marketplace.SearchResponse\x12I\n\nUpdateItem\x12\x1e.marketplace.UpdateItemRequest\x1a\x1b.marketplace.ActionResponse\x12@\n\x08PlaceBid\x12\x17.marketplace.BidRequest\x1a\x1b.marketplace.ActionResponse\x12G\n\x0bJoinAuction\x12\x1b.marketplace.AuctionRequest\x1a\x19.marketplace.AuctionEvent0\x01\x32\xc9\x04\n\x0eStorageService\x12I\n\nCreateItem\x12\x1e.marketplace.CreateItemRequest\x1a\x1b.marketplace.ActionResponse\x12\x44\n\x07GetItem\x12\x1b.marketplace.GetItemRequest\x1a\x1c.marketplace.MarketplaceItem\x12\x46\n\x0bSearchItems\x12\x1a.marketplace.SearchRequest\x1a\x1b.marketplace.SearchResponse\x12I\n\nUpdateItem\x12\x1e.marketplace.UpdateItemRequest\x1a\x1b.marketplace.ActionResponse\x12@\n\x08PlaceBid\x12\x17.marketplace.BidRequest\x1a\x1b.marketplace.ActionResponse\x12\x45\n\x0b\x41uctionPoll\x12\x1b.marketplace.AuctionRequest\x1a\x19.marketplace.AuctionEvent\x12\x44\n\rReplicateData\x12\x18.marketplace.SyncRequest\x1a\x19.marketplace.SyncResponse\x12\x44\n\tGetBackup\x12\x1a.marketplace.BackupRequest\x1a\x1b.marketplace.BackupResponse2\x88\x03\n\x11\x43ontrollerService\x12L\n\rUpdateBackups\x12\x1e.marketplace.UpdateItemRequest\x1a\x1b.marketplace.ActionResponse\x12H\n\x10\x42idUpdateBackups\x12\x17.marketplace.BidRequest\x1a\x1b.marketplace.ActionResponse\x12\x44\n\rReplicateData\x12\x18.marketplace.SyncRequest\x1a\x19.marketplace.SyncResponse\x12\x44\n\tGetBackup\x12\x1a.marketplace.BackupRequest\x1a\x1b.marketplace.BackupResponse\x12O\n\x10\x43reateItemBackup\x12\x1e.marketplace.CreateItemRequest\x1a\x1b.marketplace.ActionResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,25 +34,43 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_MARKETPLACEITEM']._serialized_start=30
   _globals['_MARKETPLACEITEM']._serialized_end=235
   _globals['_CREATEITEMREQUEST']._serialized_start=237
-  _globals['_CREATEITEMREQUEST']._serialized_end=300
-  _globals['_GETITEMREQUEST']._serialized_start=302
-  _globals['_GETITEMREQUEST']._serialized_end=335
-  _globals['_SEARCHREQUEST']._serialized_start=337
-  _globals['_SEARCHREQUEST']._serialized_end=385
-  _globals['_SEARCHRESPONSE']._serialized_start=387
-  _globals['_SEARCHRESPONSE']._serialized_end=448
-  _globals['_UPDATEITEMREQUEST']._serialized_start=451
-  _globals['_UPDATEITEMREQUEST']._serialized_end=623
-  _globals['_BIDREQUEST']._serialized_start=625
-  _globals['_BIDREQUEST']._serialized_end=693
-  _globals['_ACTIONRESPONSE']._serialized_start=695
-  _globals['_ACTIONRESPONSE']._serialized_end=766
-  _globals['_AUCTIONREQUEST']._serialized_start=768
-  _globals['_AUCTIONREQUEST']._serialized_end=818
-  _globals['_AUCTIONEVENT']._serialized_start=821
-  _globals['_AUCTIONEVENT']._serialized_end=1031
-  _globals['_AUCTIONEVENT_EVENTTYPE']._serialized_start=968
-  _globals['_AUCTIONEVENT_EVENTTYPE']._serialized_end=1031
-  _globals['_MARKETPLACESERVICE']._serialized_start=1034
-  _globals['_MARKETPLACESERVICE']._serialized_end=1485
+  _globals['_CREATEITEMREQUEST']._serialized_end=326
+  _globals['_GETITEMREQUEST']._serialized_start=328
+  _globals['_GETITEMREQUEST']._serialized_end=361
+  _globals['_SEARCHREQUEST']._serialized_start=363
+  _globals['_SEARCHREQUEST']._serialized_end=411
+  _globals['_SEARCHRESPONSE']._serialized_start=413
+  _globals['_SEARCHRESPONSE']._serialized_end=474
+  _globals['_UPDATEITEMREQUEST']._serialized_start=477
+  _globals['_UPDATEITEMREQUEST']._serialized_end=675
+  _globals['_BIDREQUEST']._serialized_start=677
+  _globals['_BIDREQUEST']._serialized_end=771
+  _globals['_ACTIONRESPONSE']._serialized_start=773
+  _globals['_ACTIONRESPONSE']._serialized_end=844
+  _globals['_AUCTIONREQUEST']._serialized_start=846
+  _globals['_AUCTIONREQUEST']._serialized_end=896
+  _globals['_AUCTIONEVENT']._serialized_start=899
+  _globals['_AUCTIONEVENT']._serialized_end=1109
+  _globals['_AUCTIONEVENT_EVENTTYPE']._serialized_start=1046
+  _globals['_AUCTIONEVENT_EVENTTYPE']._serialized_end=1109
+  _globals['_SYNCREQUEST']._serialized_start=1111
+  _globals['_SYNCREQUEST']._serialized_end=1169
+  _globals['_SYNCRESPONSE']._serialized_start=1171
+  _globals['_SYNCRESPONSE']._serialized_end=1219
+  _globals['_HEALTHCHECKREQUEST']._serialized_start=1221
+  _globals['_HEALTHCHECKREQUEST']._serialized_end=1258
+  _globals['_HEALTHCHECKRESPONSE']._serialized_start=1261
+  _globals['_HEALTHCHECKRESPONSE']._serialized_end=1427
+  _globals['_HEALTHCHECKRESPONSE_SERVINGSTATUS']._serialized_start=1348
+  _globals['_HEALTHCHECKRESPONSE_SERVINGSTATUS']._serialized_end=1427
+  _globals['_BACKUPREQUEST']._serialized_start=1429
+  _globals['_BACKUPREQUEST']._serialized_end=1444
+  _globals['_BACKUPRESPONSE']._serialized_start=1446
+  _globals['_BACKUPRESPONSE']._serialized_end=1476
+  _globals['_MARKETPLACESERVICE']._serialized_start=1479
+  _globals['_MARKETPLACESERVICE']._serialized_end=1930
+  _globals['_STORAGESERVICE']._serialized_start=1933
+  _globals['_STORAGESERVICE']._serialized_end=2518
+  _globals['_CONTROLLERSERVICE']._serialized_start=2521
+  _globals['_CONTROLLERSERVICE']._serialized_end=2913
 # @@protoc_insertion_point(module_scope)

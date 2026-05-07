@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: kv-frontend:latest
+          image: kv-frontend:v3
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50051
@@ -45,6 +45,8 @@ spec:
               value: "50051"
             - name: STORAGE_PORT
               value: "50052"
+            - name: STORAGE_TARGET
+              value: "storage-primary:50052"
           
           # REQUIRED FOR CPU AUTOSCALING: 
           # Defines the baseline CPU this pod expects to use.

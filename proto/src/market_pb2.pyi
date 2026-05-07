@@ -32,10 +32,12 @@ class MarketplaceItem(_message.Message):
     def __init__(self, item_id: _Optional[str] = ..., seller_id: _Optional[str] = ..., title: _Optional[str] = ..., category: _Optional[str] = ..., description: _Optional[str] = ..., starting_price: _Optional[float] = ..., current_price: _Optional[float] = ..., quantity: _Optional[int] = ..., status: _Optional[str] = ..., version: _Optional[int] = ...) -> None: ...
 
 class CreateItemRequest(_message.Message):
-    __slots__ = ("item",)
+    __slots__ = ("item", "is_replica_write")
     ITEM_FIELD_NUMBER: _ClassVar[int]
+    IS_REPLICA_WRITE_FIELD_NUMBER: _ClassVar[int]
     item: MarketplaceItem
-    def __init__(self, item: _Optional[_Union[MarketplaceItem, _Mapping]] = ...) -> None: ...
+    is_replica_write: bool
+    def __init__(self, item: _Optional[_Union[MarketplaceItem, _Mapping]] = ..., is_replica_write: bool = ...) -> None: ...
 
 class GetItemRequest(_message.Message):
     __slots__ = ("item_id",)
@@ -58,28 +60,32 @@ class SearchResponse(_message.Message):
     def __init__(self, items: _Optional[_Iterable[_Union[MarketplaceItem, _Mapping]]] = ...) -> None: ...
 
 class UpdateItemRequest(_message.Message):
-    __slots__ = ("item_id", "description", "quantity", "status", "expected_version")
+    __slots__ = ("item_id", "description", "quantity", "status", "expected_version", "is_replica_write")
     ITEM_ID_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     QUANTITY_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     EXPECTED_VERSION_FIELD_NUMBER: _ClassVar[int]
+    IS_REPLICA_WRITE_FIELD_NUMBER: _ClassVar[int]
     item_id: str
     description: str
     quantity: int
     status: str
     expected_version: int
-    def __init__(self, item_id: _Optional[str] = ..., description: _Optional[str] = ..., quantity: _Optional[int] = ..., status: _Optional[str] = ..., expected_version: _Optional[int] = ...) -> None: ...
+    is_replica_write: bool
+    def __init__(self, item_id: _Optional[str] = ..., description: _Optional[str] = ..., quantity: _Optional[int] = ..., status: _Optional[str] = ..., expected_version: _Optional[int] = ..., is_replica_write: bool = ...) -> None: ...
 
 class BidRequest(_message.Message):
-    __slots__ = ("item_id", "bidder_id", "bid_amount")
+    __slots__ = ("item_id", "bidder_id", "bid_amount", "is_replica_write")
     ITEM_ID_FIELD_NUMBER: _ClassVar[int]
     BIDDER_ID_FIELD_NUMBER: _ClassVar[int]
     BID_AMOUNT_FIELD_NUMBER: _ClassVar[int]
+    IS_REPLICA_WRITE_FIELD_NUMBER: _ClassVar[int]
     item_id: str
     bidder_id: str
     bid_amount: float
-    def __init__(self, item_id: _Optional[str] = ..., bidder_id: _Optional[str] = ..., bid_amount: _Optional[float] = ...) -> None: ...
+    is_replica_write: bool
+    def __init__(self, item_id: _Optional[str] = ..., bidder_id: _Optional[str] = ..., bid_amount: _Optional[float] = ..., is_replica_write: bool = ...) -> None: ...
 
 class ActionResponse(_message.Message):
     __slots__ = ("success", "message", "new_version")
@@ -116,3 +122,49 @@ class AuctionEvent(_message.Message):
     item_snapshot: MarketplaceItem
     event_description: str
     def __init__(self, type: _Optional[_Union[AuctionEvent.EventType, str]] = ..., item_snapshot: _Optional[_Union[MarketplaceItem, _Mapping]] = ..., event_description: _Optional[str] = ...) -> None: ...
+
+class SyncRequest(_message.Message):
+    __slots__ = ("items",)
+    ITEMS_FIELD_NUMBER: _ClassVar[int]
+    items: _containers.RepeatedCompositeFieldContainer[MarketplaceItem]
+    def __init__(self, items: _Optional[_Iterable[_Union[MarketplaceItem, _Mapping]]] = ...) -> None: ...
+
+class SyncResponse(_message.Message):
+    __slots__ = ("success", "message")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    message: str
+    def __init__(self, success: bool = ..., message: _Optional[str] = ...) -> None: ...
+
+class HealthCheckRequest(_message.Message):
+    __slots__ = ("service",)
+    SERVICE_FIELD_NUMBER: _ClassVar[int]
+    service: str
+    def __init__(self, service: _Optional[str] = ...) -> None: ...
+
+class HealthCheckResponse(_message.Message):
+    __slots__ = ("status",)
+    class ServingStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        UNKNOWN: _ClassVar[HealthCheckResponse.ServingStatus]
+        SERVING: _ClassVar[HealthCheckResponse.ServingStatus]
+        NOT_SERVING: _ClassVar[HealthCheckResponse.ServingStatus]
+        SERVICE_UNKNOWN: _ClassVar[HealthCheckResponse.ServingStatus]
+    UNKNOWN: HealthCheckResponse.ServingStatus
+    SERVING: HealthCheckResponse.ServingStatus
+    NOT_SERVING: HealthCheckResponse.ServingStatus
+    SERVICE_UNKNOWN: HealthCheckResponse.ServingStatus
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    status: HealthCheckResponse.ServingStatus
+    def __init__(self, status: _Optional[_Union[HealthCheckResponse.ServingStatus, str]] = ...) -> None: ...
+
+class BackupRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class BackupResponse(_message.Message):
+    __slots__ = ("data",)
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    data: bytes
+    def __init__(self, data: _Optional[bytes] = ...) -> None: ...

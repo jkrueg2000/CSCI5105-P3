@@ -38,6 +38,8 @@ service StorageService {
   rpc AuctionPoll(AuctionRequest) returns (AuctionEvent);
 
   rpc ReplicateData(SyncRequest) returns (SyncResponse);
+
+  rpc GetBackup(BackupRequest) returns (BackupResponse);
 }
 
 service ControllerService {
@@ -46,6 +48,10 @@ service ControllerService {
   rpc BidUpdateBackups(BidRequest) returns (ActionResponse);
 
   rpc ReplicateData(SyncRequest) returns (SyncResponse);
+
+  rpc GetBackup(BackupRequest) returns (BackupResponse);
+  
+  rpc CreateItemBackup(CreateItemRequest) returns (ActionResponse);
 }
 
 //  3.1 Required Item Schema 
@@ -66,6 +72,7 @@ message MarketplaceItem {
 
 message CreateItemRequest {
   MarketplaceItem item = 1;
+  bool is_replica_write = 15;
 }
 
 message GetItemRequest {
@@ -88,12 +95,14 @@ message UpdateItemRequest {
   optional int32 quantity = 3;
   optional string status = 4;
   uint64 expected_version = 5; // For optimistic concurrency control
+  bool is_replica_write = 15;
 }
 
 message BidRequest {
   string item_id = 1;
   string bidder_id = 2;
   double bid_amount = 3;
+  bool is_replica_write = 15;
 }
 
 message ActionResponse {
@@ -118,6 +127,16 @@ message AuctionEvent {
   string event_description = 3;
 }
 
+// Messages used for replication between storage nodes and controller
+message SyncRequest {
+  repeated MarketplaceItem items = 1;
+}
+
+message SyncResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message HealthCheckRequest {
   string service = 1;
 }
@@ -131,3 +150,10 @@ message HealthCheckResponse {
   }
   ServingStatus status = 1;
 }
+
+message BackupRequest {
+}
+
+message BackupResponse {
+  bytes data = 1;
+}

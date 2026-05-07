@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller
+spec:
+  type: ClusterIP
+  selector:
+    app: controller
+  ports:
+    - port: 50050
+      targetPort: 50050
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: controller
+  template:
+    metadata:
+      labels:
+        app: controller
+    spec:
+      containers:
+        - name: controller
+          image: kv-controller:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50050
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PORT
+              value: "50050"
+
+          # Native K8s gRPC Liveness Probe
+          livenessProbe:
+            grpc:
+              port: 50050
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # Native K8s gRPC Readiness Probe
+          readinessProbe:
+            grpc:
+              port: 50050
+            initialDelaySeconds: 5
+            periodSeconds: 5

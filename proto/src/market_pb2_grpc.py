@@ -320,3 +320,620 @@ class MarketplaceService(object):
             timeout,
             metadata,
             _registered_method=True)
+
+
+class StorageServiceStub(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.CreateItem = channel.unary_unary(
+                '/marketplace.StorageService/CreateItem',
+                request_serializer=market__pb2.CreateItemRequest.SerializeToString,
+                response_deserializer=market__pb2.ActionResponse.FromString,
+                _registered_method=True)
+        self.GetItem = channel.unary_unary(
+                '/marketplace.StorageService/GetItem',
+                request_serializer=market__pb2.GetItemRequest.SerializeToString,
+                response_deserializer=market__pb2.MarketplaceItem.FromString,
+                _registered_method=True)
+        self.SearchItems = channel.unary_unary(
+                '/marketplace.StorageService/SearchItems',
+                request_serializer=market__pb2.SearchRequest.SerializeToString,
+                response_deserializer=market__pb2.SearchResponse.FromString,
+                _registered_method=True)
+        self.UpdateItem = channel.unary_unary(
+                '/marketplace.StorageService/UpdateItem',
+                request_serializer=market__pb2.UpdateItemRequest.SerializeToString,
+                response_deserializer=market__pb2.ActionResponse.FromString,
+                _registered_method=True)
+        self.PlaceBid = channel.unary_unary(
+                '/marketplace.StorageService/PlaceBid',
+                request_serializer=market__pb2.BidRequest.SerializeToString,
+                response_deserializer=market__pb2.ActionResponse.FromString,
+                _registered_method=True)
+        self.AuctionPoll = channel.unary_unary(
+                '/marketplace.StorageService/AuctionPoll',
+                request_serializer=market__pb2.AuctionRequest.SerializeToString,
+                response_deserializer=market__pb2.AuctionEvent.FromString,
+                _registered_method=True)
+        self.ReplicateData = channel.unary_unary(
+                '/marketplace.StorageService/ReplicateData',
+                request_serializer=market__pb2.SyncRequest.SerializeToString,
+                response_deserializer=market__pb2.SyncResponse.FromString,
+                _registered_method=True)
+        self.GetBackup = channel.unary_unary(
+                '/marketplace.StorageService/GetBackup',
+                request_serializer=market__pb2.BackupRequest.SerializeToString,
+                response_deserializer=market__pb2.BackupResponse.FromString,
+                _registered_method=True)
+
+
+class StorageServiceServicer(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def CreateItem(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetItem(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SearchItems(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateItem(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PlaceBid(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AuctionPoll(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReplicateData(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetBackup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_StorageServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'CreateItem': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateItem,
+                    request_deserializer=market__pb2.CreateItemRequest.FromString,
+                    response_serializer=market__pb2.ActionResponse.SerializeToString,
+            ),
+            'GetItem': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetItem,
+                    request_deserializer=market__pb2.GetItemRequest.FromString,
+                    response_serializer=market__pb2.MarketplaceItem.SerializeToString,
+            ),
+            'SearchItems': grpc.unary_unary_rpc_method_handler(
+                    servicer.SearchItems,
+                    request_deserializer=market__pb2.SearchRequest.FromString,
+                    response_serializer=market__pb2.SearchResponse.SerializeToString,
+            ),
+            'UpdateItem': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateItem,
+                    request_deserializer=market__pb2.UpdateItemRequest.FromString,
+                    response_serializer=market__pb2.ActionResponse.SerializeToString,
+            ),
+            'PlaceBid': grpc.unary_unary_rpc_method_handler(
+                    servicer.PlaceBid,
+                    request_deserializer=market__pb2.BidRequest.FromString,
+                    response_serializer=market__pb2.ActionResponse.SerializeToString,
+            ),
+            'AuctionPoll': grpc.unary_unary_rpc_method_handler(
+                    servicer.AuctionPoll,
+                    request_deserializer=market__pb2.AuctionRequest.FromString,
+                    response_serializer=market__pb2.AuctionEvent.SerializeToString,
+            ),
+            'ReplicateData': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReplicateData,
+                    request_deserializer=market__pb2.SyncRequest.FromString,
+                    response_serializer=market__pb2.SyncResponse.SerializeToString,
+            ),
+            'GetBackup': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetBackup,
+                    request_deserializer=market__pb2.BackupRequest.FromString,
+                    response_serializer=market__pb2.BackupResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'marketplace.StorageService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('marketplace.StorageService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class StorageService(object):
+    """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def CreateItem(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/CreateItem',
+            market__pb2.CreateItemRequest.SerializeToString,
+            market__pb2.ActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetItem(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/GetItem',
+            market__pb2.GetItemRequest.SerializeToString,
+            market__pb2.MarketplaceItem.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SearchItems(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/SearchItems',
+            market__pb2.SearchRequest.SerializeToString,
+            market__pb2.SearchResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateItem(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/UpdateItem',
+            market__pb2.UpdateItemRequest.SerializeToString,
+            market__pb2.ActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PlaceBid(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/PlaceBid',
+            market__pb2.BidRequest.SerializeToString,
+            market__pb2.ActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AuctionPoll(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/AuctionPoll',
+            market__pb2.AuctionRequest.SerializeToString,
+            market__pb2.AuctionEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReplicateData(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/ReplicateData',
+            market__pb2.SyncRequest.SerializeToString,
+            market__pb2.SyncResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetBackup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.StorageService/GetBackup',
+            market__pb2.BackupRequest.SerializeToString,
+            market__pb2.BackupResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class ControllerServiceStub(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.UpdateBackups = channel.unary_unary(
+                '/marketplace.ControllerService/UpdateBackups',
+                request_serializer=market__pb2.UpdateItemRequest.SerializeToString,
+                response_deserializer=market__pb2.ActionResponse.FromString,
+                _registered_method=True)
+        self.BidUpdateBackups = channel.unary_unary(
+                '/marketplace.ControllerService/BidUpdateBackups',
+                request_serializer=market__pb2.BidRequest.SerializeToString,
+                response_deserializer=market__pb2.ActionResponse.FromString,
+                _registered_method=True)
+        self.ReplicateData = channel.unary_unary(
+                '/marketplace.ControllerService/ReplicateData',
+                request_serializer=market__pb2.SyncRequest.SerializeToString,
+                response_deserializer=market__pb2.SyncResponse.FromString,
+                _registered_method=True)
+        self.GetBackup = channel.unary_unary(
+                '/marketplace.ControllerService/GetBackup',
+                request_serializer=market__pb2.BackupRequest.SerializeToString,
+                response_deserializer=market__pb2.BackupResponse.FromString,
+                _registered_method=True)
+        self.CreateItemBackup = channel.unary_unary(
+                '/marketplace.ControllerService/CreateItemBackup',
+                request_serializer=market__pb2.CreateItemRequest.SerializeToString,
+                response_deserializer=market__pb2.ActionResponse.FromString,
+                _registered_method=True)
+
+
+class ControllerServiceServicer(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def UpdateBackups(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BidUpdateBackups(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReplicateData(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetBackup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateItemBackup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_ControllerServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'UpdateBackups': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateBackups,
+                    request_deserializer=market__pb2.UpdateItemRequest.FromString,
+                    response_serializer=market__pb2.ActionResponse.SerializeToString,
+            ),
+            'BidUpdateBackups': grpc.unary_unary_rpc_method_handler(
+                    servicer.BidUpdateBackups,
+                    request_deserializer=market__pb2.BidRequest.FromString,
+                    response_serializer=market__pb2.ActionResponse.SerializeToString,
+            ),
+            'ReplicateData': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReplicateData,
+                    request_deserializer=market__pb2.SyncRequest.FromString,
+                    response_serializer=market__pb2.SyncResponse.SerializeToString,
+            ),
+            'GetBackup': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetBackup,
+                    request_deserializer=market__pb2.BackupRequest.FromString,
+                    response_serializer=market__pb2.BackupResponse.SerializeToString,
+            ),
+            'CreateItemBackup': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateItemBackup,
+                    request_deserializer=market__pb2.CreateItemRequest.FromString,
+                    response_serializer=market__pb2.ActionResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'marketplace.ControllerService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('marketplace.ControllerService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class ControllerService(object):
+    """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def UpdateBackups(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.ControllerService/UpdateBackups',
+            market__pb2.UpdateItemRequest.SerializeToString,
+            market__pb2.ActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BidUpdateBackups(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.ControllerService/BidUpdateBackups',
+            market__pb2.BidRequest.SerializeToString,
+            market__pb2.ActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReplicateData(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.ControllerService/ReplicateData',
+            market__pb2.SyncRequest.SerializeToString,
+            market__pb2.SyncResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetBackup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.ControllerService/GetBackup',
+            market__pb2.BackupRequest.SerializeToString,
+            market__pb2.BackupResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateItemBackup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/marketplace.ControllerService/CreateItemBackup',
+            market__pb2.CreateItemRequest.SerializeToString,
+            market__pb2.ActionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

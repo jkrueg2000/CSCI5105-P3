@@ -2,9 +2,16 @@ import os
 import asyncio
 
 import grpc
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
 import market_pb2
 import market_pb2_grpc
+import logging
+from utils.logging_config import configure_logging
+
+# initialize logging (idempotent)
+configure_logging()
+logger = logging.getLogger(__name__)
 
 POD_NAME = os.environ.get("POD_NAME", "SERVICE")
 PORT = os.environ.get("PORT", "50051")
@@ -12,7 +19,7 @@ PORT = os.environ.get("PORT", "50051")
 # Storage configuration (external storage service via gRPC)
 STORAGE_PORT = os.environ.get("STORAGE_PORT", "50052")
 # Use a single replicated storage service; service does not shard or replicate
-STORAGE_TARGET = f"storage:{STORAGE_PORT}"
+STORAGE_TARGET = os.environ.get("STORAGE_TARGET", f"storage:{STORAGE_PORT}")
 
 INDEX_KEY = "marketplace:items_index"
 
@@ -29,7 +36,7 @@ class ItemAuctionTracker:
 
     async def startup(self):
         async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
                 resp = await stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
                 if resp.item:
@@ -37,11 +44,11 @@ class ItemAuctionTracker:
                     self.item = resp.item
                     asyncio.create_task(self.poll())
             except grpc.aio.AioRpcError as e:
-                print(f"Error initializing tracker for item {self.item_id}: {e}")
+                logger.exception("Error initializing tracker for item %s", self.item_id)
 
     async def poll(self):
         async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             while True:
                 await asyncio.sleep(5)
                 try:
@@ -71,7 +78,7 @@ class ItemAuctionTracker:
                         self.item = resp.item
 
                 except grpc.aio.AioRpcError as e:
-                    print(f"Error polling item {self.item_id}: {e}")
+                    logger.exception("Error polling item %s", self.item_id)
                 await asyncio.sleep(5)  # Poll every second
 
     async def _notify_subscribers(self, event):
@@ -113,13 +120,13 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
             if item_id not in self.active_trackers:
                 tracker = ItemAuctionTracker(item_id)
                 self.active_trackers[item_id] = tracker
-                asyncio.create_task(tracker._startup())
+                asyncio.create_task(tracker.startup())
             return self.active_trackers[item_id]
 
     async def CreateItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
                 resp = await stub.CreateItem(request)
                 return resp
@@ -131,7 +138,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def GetItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
                 resp = await stub.GetItem(request)
                 return resp
@@ -143,7 +150,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def SearchItems(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
                 resp = await stub.SearchItems(request)
                 return resp
@@ -155,7 +162,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def UpdateItem(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
                 resp = await stub.UpdateItem(request)
                 return resp
@@ -167,7 +174,7 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
     async def PlaceBid(self, request, context):
         target = STORAGE_TARGET
         async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.MarketplaceService(channel)
+            stub = market_pb2_grpc.StorageServiceStub(channel)
             try:
                 resp = await stub.PlaceBid(request)
                 return resp
@@ -178,27 +185,27 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
 
     async def JoinAuction(self, request, context):
         item_id = request.item_id
-        q = asyncio.Queue()
-        async with ITEMS_LOCK:
-            subs = AUCTION_SUBSCRIBERS.setdefault(item_id, [])
-            subs.append(q)
+        tracker = await self._get_or_create_tracker(item_id)
+        sub_id, q = await tracker.subscribe()
         try:
             while True:
                 evt = await q.get()
                 yield evt
         finally:
-            async with ITEMS_LOCK:
-                subs = AUCTION_SUBSCRIBERS.get(item_id, [])
-                if q in subs:
-                    subs.remove(q)
+            await tracker.unsubscribe(sub_id)
  
 
 async def serve():
     server = grpc.aio.server()
     market_pb2_grpc.add_MarketplaceServiceServicer_to_server(MarketplaceService(), server)
+    # Health servicer for Kubernetes gRPC probes
+    health_servicer = health.HealthServicer()
+    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+    # mark overall server as SERVING
+    health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
     server.add_insecure_port(f"[::]:{PORT}")
     await server.start()
-    print(f"frontend {POD_NAME} listening on {PORT}", flush=True)
+    logger.info("frontend %s listening on %s", POD_NAME, PORT)
     await server.wait_for_termination()
 
 

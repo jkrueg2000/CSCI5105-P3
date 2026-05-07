@@ -3,10 +3,18 @@ from concurrent import futures
 import threading
 
 import grpc
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 import pandas as pd
+import pickle
 
 import market_pb2
 import market_pb2_grpc
+import logging
+from utils.logging_config import configure_logging
+
+# initialize logging (idempotent)
+configure_logging()
+logger = logging.getLogger(__name__)
 
 POD_NAME = os.environ.get("POD_NAME", "storage")
 PORT = os.environ.get("PORT", "50052")
@@ -47,7 +55,23 @@ def _row_to_item(item_id, row) -> market_pb2.MarketplaceItem:
 
 
 class StorageService(market_pb2_grpc.StorageServiceServicer):
+    def GetBackup(self, request, context):
+        with DATA_LOCK:
+            data = pickle.dumps(DATA_DF)
+        return market_pb2.BackupResponse(data=data)
+
     def CreateItem(self, request, context):
+        if not request.is_replica_write:
+            try:
+                controller_target = os.environ.get("CONTROLLER_ADDR", "controller:50050")
+                with grpc.insecure_channel(controller_target) as channel:
+                    stub = market_pb2_grpc.ControllerServiceStub(channel)
+                    resp = stub.CreateItemBackup(request, timeout=5)
+                    if not resp.success:
+                        return resp
+            except Exception as e:
+                return market_pb2.ActionResponse(success=False, message=f"controller err: {e}", new_version=0)
+                
         item = request.item
         with DATA_LOCK:
             if item.item_id in DATA_DF.index:
@@ -66,7 +90,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
                 "version": version,
             }
             DATA_DF.loc[item.item_id] = row
-        print(f"{POD_NAME} CreateItem {item.item_id}", flush=True)
+        logger.info("%s CreateItem %s", POD_NAME, item.item_id)
         return market_pb2.ActionResponse(success=True, message="created", new_version=version)
 
     def GetItem(self, request, context):
@@ -94,6 +118,17 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
         return market_pb2.SearchResponse(items=results)
 
     def UpdateItem(self, request, context):
+        if not request.is_replica_write:
+            try:
+                controller_target = os.environ.get("CONTROLLER_ADDR", "controller:50050")
+                with grpc.insecure_channel(controller_target) as channel:
+                    stub = market_pb2_grpc.ControllerServiceStub(channel)
+                    resp = stub.UpdateBackups(request, timeout=5)
+                    if not resp.success:
+                        return resp
+            except Exception as e:
+                return market_pb2.ActionResponse(success=False, message=f"controller err: {e}", new_version=0)
+
         item_id = request.item_id
         with DATA_LOCK:
             if item_id not in DATA_DF.index:
@@ -124,10 +159,21 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
             row["version"] = current_version + 1
             DATA_DF.loc[item_id] = row
             new_version = row["version"]
-        print(f"{POD_NAME} UpdateItem {item_id} -> v{new_version}", flush=True)
+        logger.info("%s UpdateItem %s -> v%s", POD_NAME, item_id, new_version)
         return market_pb2.ActionResponse(success=True, message="updated", new_version=new_version)
 
     def PlaceBid(self, request, context):
+        if not request.is_replica_write:
+            try:
+                controller_target = os.environ.get("CONTROLLER_ADDR", "controller:50050")
+                with grpc.insecure_channel(controller_target) as channel:
+                    stub = market_pb2_grpc.ControllerServiceStub(channel)
+                    resp = stub.BidUpdateBackups(request, timeout=5)
+                    if not resp.success:
+                        return resp
+            except Exception as e:
+                return market_pb2.ActionResponse(success=False, message=f"controller err: {e}", new_version=0)
+
         item_id = request.item_id
         with DATA_LOCK:
             if item_id not in DATA_DF.index:
@@ -146,7 +192,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
             row["version"] = version + 1
             DATA_DF.loc[item_id] = row
             new_version = row["version"]
-        print(f"{POD_NAME} PlaceBid {item_id} bid={request.bid_amount} by {request.bidder_id}", flush=True)
+        logger.info("%s PlaceBid %s bid=%s by %s", POD_NAME, item_id, request.bid_amount, request.bidder_id)
         return market_pb2.ActionResponse(success=True, message="bid accepted", new_version=new_version)
 
     def AuctionPoll(self, request, context):
@@ -160,11 +206,31 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
 
 
 def serve():
+    # Sync from controller
+    controller_target = os.environ.get("CONTROLLER_ADDR", "controller:50050")
+    try:
+        with grpc.insecure_channel(controller_target) as channel:
+            stub = market_pb2_grpc.ControllerServiceStub(channel)
+            resp = stub.GetBackup(market_pb2.BackupRequest(), timeout=5)
+            if resp.data:
+                global DATA_DF
+                with DATA_LOCK:
+                    DATA_DF = pickle.loads(resp.data)
+                logger.info("Successfully loaded backup from controller.")
+    except Exception as e:
+        logger.warning(f"Could not load backup from controller: {e}")
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     market_pb2_grpc.add_StorageServiceServicer_to_server(StorageService(), server)
+
+    # Health servicer for Kubernetes gRPC probes
+    health_servicer = health.HealthServicer()
+    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+    # mark overall server as SERVING
+    health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
     server.add_insecure_port(f"[::]:{PORT}")
     server.start()
-    print(f"storage {POD_NAME} listening on {PORT}", flush=True)
+    logger.info("storage %s listening on %s", POD_NAME, PORT)
     server.wait_for_termination()
 
 
