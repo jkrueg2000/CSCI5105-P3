@@ -30,8 +30,10 @@ class Controller(market_pb2_grpc.ControllerServiceServicer):
         self.live_nodes = {}  # id -> (ip, port)
         self._liveness_task = None
         self._stop_liveness = asyncio.Event()
+        self._api_client = None
+        self._v1 = None
 
-    async def poll_storage_liveness(self, label_selector: str = "app=storage", namespace: str = "default", interval: int = 10, on_update=None):
+    async def poll_storage_liveness(self, label_selector: str = "app=storage", namespace: str = "default", interval: int = 3, on_update=None):
         """
         Async loop that queries the Kubernetes API for pods matching `label_selector`
         in `namespace` and invokes `on_update(statuses)` with a dict mapping
@@ -43,41 +45,46 @@ class Controller(market_pb2_grpc.ControllerServiceServicer):
 
         # Prefer in-cluster config, fall back to kubeconfig
         try:
-            await k8s_config.load_incluster_config()
+            k8s_config.load_incluster_config()
         except Exception:
             try:
                 await k8s_config.load_kube_config()
             except Exception:
                 logging.exception("Failed to load Kubernetes config; API calls will likely fail")
 
-        v1 = k8s_client.CoreV1Api()
+        self._api_client = k8s_client.ApiClient()
+        self._v1 = k8s_client.CoreV1Api(self._api_client)
+        v1 = self._v1
 
-        while not self._stop_liveness.is_set():
-            try:
-                pods = await v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
-                statuses = {}
-                for pod in pods.items:
-                    name = getattr(pod.metadata, "name", None)
-                    phase = getattr(pod.status, "phase", None)
-                    pod_ip = getattr(pod.status, "pod_ip", None)
-                    conditions = getattr(pod.status, "conditions", []) or []
-                    ready_cond = next((c for c in conditions if getattr(c, "type", "") == "Ready"), None)
-                    ready = getattr(ready_cond, "status", "") == "True" if ready_cond else False
-                    statuses[name] = {"phase": phase, "ready": ready, "pod_ip": pod_ip}
+        try:
+            while not self._stop_liveness.is_set():
+                try:
+                    pods = await v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
+                    statuses = {}
+                    for pod in pods.items:
+                        name = getattr(pod.metadata, "name", None)
+                        phase = getattr(pod.status, "phase", None)
+                        pod_ip = getattr(pod.status, "pod_ip", None)
+                        conditions = getattr(pod.status, "conditions", []) or []
+                        ready_cond = next((c for c in conditions if getattr(c, "type", "") == "Ready"), None)
+                        ready = getattr(ready_cond, "status", "") == "True" if ready_cond else False
+                        statuses[name] = {"phase": phase, "ready": ready, "pod_ip": pod_ip}
 
-                self.live_nodes = statuses
-                await self._elect_primary(statuses, namespace)
+                    self.live_nodes = statuses
+                    await self._elect_primary(statuses, namespace)
 
-            except K8sApiException:
-                logging.exception("Kubernetes API error while polling storage liveness")
-            except Exception:
-                logging.exception("Unexpected error while polling storage liveness")
+                except K8sApiException:
+                    logging.exception("Kubernetes API error while polling storage liveness")
+                except Exception:
+                    logging.exception("Unexpected error while polling storage liveness")
 
-            # wait for interval or until stop requested
-            try:
-                await asyncio.wait_for(self._stop_liveness.wait(), timeout=interval)
-            except asyncio.TimeoutError:
-                pass
+                # wait for interval or until stop requested
+                try:
+                    await asyncio.wait_for(self._stop_liveness.wait(), timeout=interval)
+                except asyncio.TimeoutError:
+                    pass
+        finally:
+            await self._api_client.close()
 
     def start_storage_liveness_poll(self, *args, **kwargs):
         """
@@ -109,12 +116,31 @@ class Controller(market_pb2_grpc.ControllerServiceServicer):
             self._stop_liveness = asyncio.Event()
 
     async def _elect_primary(self, statuses, namespace="default"):
-        v1 = k8s_client.CoreV1Api()
+        v1 = self._v1
+        if not v1:
+            logging.error("K8s API client not initialized, skipping election")
+            return
         # candidates = ready Running pods with an IP
         candidates = [name for name, s in statuses.items() if s["phase"] == "Running" and s["ready"] and s.get("pod_ip")]
         if not candidates:
+            logging.warning("No ready storage candidates for election")
             return
         
+        # If the current primary is still healthy, ensure its label is applied
+        # (handles the case where StatefulSet recreated the pod with the same name
+        # but without the role=primary label)
+        if self.primary and self.primary in candidates:
+            body = {"metadata": {"labels": {"role": "primary"}}}
+            try:
+                await v1.patch_namespaced_pod(self.primary, namespace, body)
+            except Exception:
+                logging.debug("failed to re-apply primary label on %s", self.primary)
+            return
+
+        logging.info("Primary %s is no longer a candidate. Candidates: %s", self.primary, candidates)
+
+        # Current primary is gone or not yet set — elect the first available candidate
+        # (prefer lowest ordinal only as a tiebreaker)
         def ordinal(n):
             try:
                 return int(n.rsplit("-", 1)[1])
@@ -123,15 +149,15 @@ class Controller(market_pb2_grpc.ControllerServiceServicer):
             
         candidates.sort(key=ordinal)
         chosen = candidates[0]
-        if chosen == self.primary:
-            return
 
         # set the new primary label
         body = {"metadata": {"labels": {"role": "primary"}}}
         try:
             await v1.patch_namespaced_pod(chosen, namespace, body)
+            logging.info("Patched role=primary label onto %s", chosen)
         except Exception:
-            logging.exception("failed to set primary label on %s", chosen)
+            logging.exception("FAILED to set primary label on %s", chosen)
+            return  # Don't update self.primary if the patch failed
 
         # remove role label from previous primary (if any) using JSON patch
         if self.primary and self.primary != chosen:
@@ -142,7 +168,7 @@ class Controller(market_pb2_grpc.ControllerServiceServicer):
                 logging.debug("old primary label removal failed (may be already absent)")
 
         self.primary = chosen
-        logging.info("elected primary: %s", chosen)
+        logging.info("Elected new primary: %s", chosen)
 
     async def GetBackup(self, request, context):
         if not self.primary:

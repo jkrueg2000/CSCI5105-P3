@@ -13,15 +13,17 @@ log() {
 }
 
 log "## 1. Building Docker Images"
+IMAGE_TAG="v$(date +%s)"
 docker build -t kv-frontend:latest -f Dockerfile.service . | tee -a "$OUTPUT_FILE"
 docker build -t kv-storage:latest -f Dockerfile.storage . | tee -a "$OUTPUT_FILE"
-docker build -t kv-controller:latest -f Dockerfile.controller . | tee -a "$OUTPUT_FILE"
+docker build --build-arg CACHEBUST="$IMAGE_TAG" -t kv-controller:latest -t kv-controller:$IMAGE_TAG -f Dockerfile.controller . | tee -a "$OUTPUT_FILE"
 
 log "## 2. Deploying to Kubernetes"
 kubectl apply -f k8s/ | tee -a "$OUTPUT_FILE"
 
 log "Restarting deployments to pick up new images..."
-kubectl rollout restart deployment frontend controller || true
+kubectl rollout restart deployment frontend || true
+kubectl set image deployment/controller controller=kv-controller:$IMAGE_TAG
 kubectl rollout restart statefulset storage || true
 
 log "Waiting for pods to be ready (this may take a minute)..."
@@ -54,6 +56,12 @@ echo '```' >> "$OUTPUT_FILE"
 log "## 6. Running Mixed Read/Write Load Test (10s, 20 workers, 10% Bids)"
 echo '```text' >> "$OUTPUT_FILE"
 kubectl exec test-client -- python /app/tests/mixed_load_test.py --target=frontend:50051 --workers=20 --duration=10 --write-ratio=0.1 2>&1 | tee -a "$OUTPUT_FILE"
+echo '```' >> "$OUTPUT_FILE"
+
+log "## 7. Running Unified Evaluation Suite (K8s)"
+echo '```text' >> "$OUTPUT_FILE"
+export PYTHONPATH=".;proto/src"
+python tests/run_eval.py --target=k8s --endpoint=localhost:50051 2>&1 | tee -a "$OUTPUT_FILE"
 echo '```' >> "$OUTPUT_FILE"
 
 log "Pipeline complete! Full results saved to $OUTPUT_FILE"
