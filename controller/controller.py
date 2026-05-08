@@ -209,10 +209,11 @@ class Controller(market_pb2_grpc.ControllerServiceServicer):
             
         results = await asyncio.gather(*tasks)
         successes = [r for r in results if r and getattr(r, "success", False)]
-        if len(successes) >= len(secondaries) // 2: # simple majority or half
+        if len(successes) == len(secondaries): # simple majority or half
             return market_pb2.ActionResponse(success=True, message="replicated", new_version=successes[0].new_version if successes else 0)
         else:
             return market_pb2.ActionResponse(success=False, message="replication failed", new_version=0)
+            
 
     async def CreateItemBackup(self, request, context):
         return await self._relay_to_secondaries("CreateItem", request)

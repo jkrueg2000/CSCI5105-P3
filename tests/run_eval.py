@@ -31,6 +31,7 @@ def main():
     from eval_suite.scenario_2_scaling import run_scaling_scenario
     from eval_suite.scenario_3_downtime import run_downtime_scenario
     from eval_suite.scenario_4_consistency import run_consistency_scenario
+    from eval_suite.workload import setup_database, WorkloadManager
 
     wrapper = ClientWrapper(endpoint, env_type=args.target)
 
@@ -40,9 +41,12 @@ def main():
     print(f"===========================================================\n")
 
     try:
-        run_throughput_scenario(wrapper)
-        run_scaling_scenario(wrapper)
-        run_downtime_scenario(wrapper)
+        bidding_items, all_items = setup_database(wrapper)
+        workload_manager = WorkloadManager(wrapper, bidding_items, all_items)
+        
+        run_throughput_scenario(wrapper, workload_manager)
+        run_scaling_scenario(wrapper, workload_manager)
+        run_downtime_scenario(wrapper, workload_manager, all_items=all_items)
         run_consistency_scenario(wrapper)
     except Exception as e:
         print(f"Evaluation suite encountered an error: {e}")

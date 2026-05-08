@@ -24,8 +24,9 @@ STORAGE_TARGET = os.environ.get("STORAGE_TARGET", f"storage:{STORAGE_PORT}")
 INDEX_KEY = "marketplace:items_index"
 
 class ItemAuctionTracker:
-    def __init__(self, item_id):
+    def __init__(self, item_id, stub):
         self.item_id = item_id
+        self.stub = stub
         self.subscribers = {} #sub id -> asyncio.Queue for updates
         self.lock = asyncio.Lock()
         self.item = None  # Cache of the current item state
@@ -35,51 +36,46 @@ class ItemAuctionTracker:
 
 
     async def startup(self):
-        async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            try:
-                resp = await stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
-                if resp.item:
-                    # If item exists, start polling for updates
-                    self.item = resp.item
-                    asyncio.create_task(self.poll())
-            except grpc.aio.AioRpcError as e:
-                logger.exception("Error initializing tracker for item %s", self.item_id)
+        try:
+            resp = await self.stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
+            if resp.item:
+                # If item exists, start polling for updates
+                self.item = resp.item
+                asyncio.create_task(self.poll())
+        except grpc.aio.AioRpcError as e:
+            logger.exception("Error initializing tracker for item %s", self.item_id)
 
     async def poll(self):
-        async with grpc.aio.insecure_channel(STORAGE_TARGET) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            while True:
-                await asyncio.sleep(5)
-                try:
-                    resp = await stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
-                    if not resp.item:
-                        # Item was deleted, notify subscribers and exit
+        while True:
+            await asyncio.sleep(1) # Poll every second
+            try:
+                resp = await self.stub.GetItem(market_pb2.GetItemRequest(item_id=self.item_id))
+                if not resp.item:
+                    # Item was deleted, notify subscribers and exit
+                    await self._notify_subscribers(market_pb2.AuctionEvent(
+                        type=market_pb2.AuctionEvent.STATUS_CHANGE,
+                        event_description=f"item {self.item_id} deleted"
+                    ))
+                    break
+                
+                if resp.item.version != self.item.version:
+                    # Item was updated, notify subscribers
+                    if resp.item.current_price != self.item.current_price:
                         await self._notify_subscribers(market_pb2.AuctionEvent(
-                            item_id=self.item_id,
-                            event_type=market_pb2.AuctionEvent.DELETED
+                            type=market_pb2.AuctionEvent.NEW_BID,
+                            item_snapshot=resp.item,
+                            event_description=f"new bid on {self.item_id}"
                         ))
-                        break
-                    
-                    if resp.item.version != self.item.version:
-                        # Item was updated, notify subscribers
-                        if resp.item.current_price != self.item.current_price:
-                            await self._notify_subscribers(market_pb2.AuctionEvent(
-                                item_id=self.item_id,
-                                event_type=market_pb2.AuctionEvent.NEW_BID,
-                                item=resp.item
-                            ))
-                        else:
-                            await self._notify_subscribers(market_pb2.AuctionEvent(
-                                item_id=self.item_id,
-                                event_type=market_pb2.AuctionEvent.UPDATED,
-                                item=self.item
-                            ))
-                        self.item = resp.item
+                    else:
+                        await self._notify_subscribers(market_pb2.AuctionEvent(
+                            type=market_pb2.AuctionEvent.STATUS_CHANGE,
+                            item_snapshot=resp.item,
+                            event_description=f"update on {self.item_id}"
+                        ))
+                    self.item = resp.item
 
-                except grpc.aio.AioRpcError as e:
-                    logger.exception("Error polling item %s", self.item_id)
-                await asyncio.sleep(5)  # Poll every second
+            except grpc.aio.AioRpcError as e:
+                logger.exception("Error polling item %s", self.item_id)
 
     async def _notify_subscribers(self, event):
         async with self.lock:
@@ -110,78 +106,69 @@ class ItemAuctionTracker:
                 pass
 
 class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
-    def __init__(self):
+    def __init__(self, stub):
         super().__init__()
+        self.stub = stub
         self.lock = asyncio.Lock()
         self.active_trackers = {}  # item_id -> auction tracker
 
     async def _get_or_create_tracker(self, item_id):
         async with self.lock:
             if item_id not in self.active_trackers:
-                tracker = ItemAuctionTracker(item_id)
+                tracker = ItemAuctionTracker(item_id, self.stub)
                 self.active_trackers[item_id] = tracker
                 asyncio.create_task(tracker.startup())
             return self.active_trackers[item_id]
 
     async def CreateItem(self, request, context):
-        target = STORAGE_TARGET
-        async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            try:
-                resp = await stub.CreateItem(request)
-                return resp
-            except grpc.aio.AioRpcError as e:
-                context.set_code(e.code())
-                context.set_details(e.details())
-                return market_pb2.ActionResponse(success=False, message=str(e), new_version=0)
+        try:
+            resp = await self.stub.CreateItem(request)
+            return resp
+        except grpc.aio.AioRpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return market_pb2.ActionResponse(success=False, message=str(e), new_version=0)
 
     async def GetItem(self, request, context):
-        target = STORAGE_TARGET
-        async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            try:
-                resp = await stub.GetItem(request)
-                return resp
-            except grpc.aio.AioRpcError as e:
-                context.set_code(e.code())
-                context.set_details(e.details())
-                return market_pb2.MarketplaceItem()
+        try:
+            resp = await self.stub.GetItem(request)
+            return resp
+        except grpc.aio.AioRpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return market_pb2.MarketplaceItem()
 
     async def SearchItems(self, request, context):
-        target = STORAGE_TARGET
-        async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            try:
-                resp = await stub.SearchItems(request)
-                return resp
-            except grpc.aio.AioRpcError as e:
-                context.set_code(e.code())
-                context.set_details(e.details())
-                return market_pb2.SearchResponse(items=[])
+        try:
+            resp = await self.stub.SearchItems(request)
+            return resp
+        except grpc.aio.AioRpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return market_pb2.SearchResponse(items=[])
 
     async def UpdateItem(self, request, context):
-        target = STORAGE_TARGET
-        async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            try:
-                resp = await stub.UpdateItem(request)
-                return resp
-            except grpc.aio.AioRpcError as e:
-                context.set_code(e.code())
-                context.set_details(e.details())
-                return market_pb2.ActionResponse(success=False, message=str(e), new_version=0)
+        try:
+            resp = await self.stub.UpdateItem(request)
+            return resp
+        except grpc.aio.AioRpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return market_pb2.ActionResponse(success=False, message=str(e), new_version=0)
 
     async def PlaceBid(self, request, context):
-        target = STORAGE_TARGET
-        async with grpc.aio.insecure_channel(target) as channel:
-            stub = market_pb2_grpc.StorageServiceStub(channel)
-            try:
-                resp = await stub.PlaceBid(request)
-                return resp
-            except grpc.aio.AioRpcError as e:
-                context.set_code(e.code())
-                context.set_details(e.details())
-                return market_pb2.ActionResponse(success=False, message=str(e), new_version=0)
+        if request.item_id in self.active_trackers and self.active_trackers[request.item_id].item and request.bid_amount <= self.active_trackers[request.item_id].item.current_price:
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("Bid amount must be higher than current price")
+            return market_pb2.ActionResponse(success=False, message="Bid amount must be higher than current price", new_version=0)
+
+        try:
+            resp = await self.stub.PlaceBid(request)
+            return resp
+        except grpc.aio.AioRpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return market_pb2.ActionResponse(success=False, message=str(e), new_version=0)
 
     async def JoinAuction(self, request, context):
         item_id = request.item_id
@@ -196,17 +183,21 @@ class MarketplaceService(market_pb2_grpc.MarketplaceServiceServicer):
  
 
 async def serve():
-    server = grpc.aio.server()
-    market_pb2_grpc.add_MarketplaceServiceServicer_to_server(MarketplaceService(), server)
-    # Health servicer for Kubernetes gRPC probes
-    health_servicer = health.HealthServicer()
-    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
-    # mark overall server as SERVING
-    health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
-    server.add_insecure_port(f"[::]:{PORT}")
-    await server.start()
-    logger.info("frontend %s listening on %s", POD_NAME, PORT)
-    await server.wait_for_termination()
+    # Initialize shared channel to storage target
+    async with grpc.aio.insecure_channel(STORAGE_TARGET) as storage_channel:
+        storage_stub = market_pb2_grpc.StorageServiceStub(storage_channel)
+        
+        server = grpc.aio.server()
+        market_pb2_grpc.add_MarketplaceServiceServicer_to_server(MarketplaceService(storage_stub), server)
+        # Health servicer for Kubernetes gRPC probes
+        health_servicer = health.HealthServicer()
+        health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+        # mark overall server as SERVING
+        health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
+        server.add_insecure_port(f"[::]:{PORT}")
+        await server.start()
+        logger.info("frontend %s listening on %s", POD_NAME, PORT)
+        await server.wait_for_termination()
 
 
 if __name__ == "__main__":

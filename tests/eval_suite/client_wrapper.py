@@ -1,12 +1,20 @@
 import grpc
 import market_pb2
 import market_pb2_grpc
+import uuid
 
 class ClientWrapper:
     def __init__(self, target, env_type="k8s"):
         self.target = target
         self.env_type = env_type
-        self.channel = grpc.insecure_channel(target)
+        # By passing a unique user-agent to the channel options, we FORCE gRPC 
+        # to create a distinct, new TCP connection for every single client instance.
+        # Otherwise, gRPC aggressively shares a single TCP connection for identical targets,
+        # which completely defeats Kubernetes LoadBalancing.
+        unique_id = f"client-{uuid.uuid4()}"
+        options = [('grpc.primary_user_agent', unique_id)]
+        
+        self.channel = grpc.insecure_channel(target, options=options)
         if env_type == "k8s":
             self.stub = market_pb2_grpc.MarketplaceServiceStub(self.channel)
         else:

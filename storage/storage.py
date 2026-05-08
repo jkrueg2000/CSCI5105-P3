@@ -36,7 +36,50 @@ DF_COLUMNS = [
 ]
 
 DATA_DF = pd.DataFrame(columns=DF_COLUMNS).set_index("item_id")
-DATA_LOCK = threading.Lock()
+
+
+class RWLock:
+    """Read-write lock: multiple concurrent readers, exclusive writers.
+    
+    Uses threading primitives so it works with the multithreaded gRPC server.
+    """
+    def __init__(self):
+        self._readers = 0
+        self._lock = threading.Lock()        # protects _readers counter
+        self._write_lock = threading.Lock()  # held by writers; readers block on it when first reader arrives
+
+    class _ReaderCtx:
+        def __init__(self, rwlock):
+            self._rw = rwlock
+        def __enter__(self):
+            with self._rw._lock:
+                self._rw._readers += 1
+                if self._rw._readers == 1:
+                    # First reader blocks writers
+                    self._rw._write_lock.acquire()
+        def __exit__(self, *exc):
+            with self._rw._lock:
+                self._rw._readers -= 1
+                if self._rw._readers == 0:
+                    # Last reader unblocks writers
+                    self._rw._write_lock.release()
+
+    class _WriterCtx:
+        def __init__(self, rwlock):
+            self._rw = rwlock
+        def __enter__(self):
+            self._rw._write_lock.acquire()
+        def __exit__(self, *exc):
+            self._rw._write_lock.release()
+
+    def read_lock(self):
+        return self._ReaderCtx(self)
+
+    def write_lock(self):
+        return self._WriterCtx(self)
+
+
+DATA_LOCK = RWLock()
 
 
 def _row_to_item(item_id, row) -> market_pb2.MarketplaceItem:
@@ -56,7 +99,7 @@ def _row_to_item(item_id, row) -> market_pb2.MarketplaceItem:
 
 class StorageService(market_pb2_grpc.StorageServiceServicer):
     def GetBackup(self, request, context):
-        with DATA_LOCK:
+        with DATA_LOCK.read_lock():
             data = pickle.dumps(DATA_DF)
         return market_pb2.BackupResponse(data=data)
 
@@ -73,7 +116,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
                 return market_pb2.ActionResponse(success=False, message=f"controller err: {e}", new_version=0)
                 
         item = request.item
-        with DATA_LOCK:
+        with DATA_LOCK.write_lock():
             if item.item_id in DATA_DF.index:
                 existing = DATA_DF.loc[item.item_id]
                 return market_pb2.ActionResponse(success=False, message="item exists", new_version=int(existing.get("version", 0) or 0))
@@ -95,7 +138,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
 
     def GetItem(self, request, context):
         item_id = request.item_id
-        with DATA_LOCK:
+        with DATA_LOCK.read_lock():
             if item_id not in DATA_DF.index:
                 return market_pb2.MarketplaceItem()
             row = DATA_DF.loc[item_id]
@@ -105,7 +148,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
         q = (request.query or "").lower()
         cat = (request.category or "").lower()
         results = []
-        with DATA_LOCK:
+        with DATA_LOCK.read_lock():
             df = DATA_DF.copy()
         if q:
             mask = df["title"].fillna("").str.lower().str.contains(q) | df["description"].fillna("").str.lower().str.contains(q)
@@ -130,7 +173,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
                 return market_pb2.ActionResponse(success=False, message=f"controller err: {e}", new_version=0)
 
         item_id = request.item_id
-        with DATA_LOCK:
+        with DATA_LOCK.write_lock():
             if item_id not in DATA_DF.index:
                 return market_pb2.ActionResponse(success=False, message="not found", new_version=0)
             row = DATA_DF.loc[item_id].to_dict()
@@ -175,7 +218,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
                 return market_pb2.ActionResponse(success=False, message=f"controller err: {e}", new_version=0)
 
         item_id = request.item_id
-        with DATA_LOCK:
+        with DATA_LOCK.write_lock():
             if item_id not in DATA_DF.index:
                 return market_pb2.ActionResponse(success=False, message="not found", new_version=0)
             row = DATA_DF.loc[item_id].to_dict()
@@ -197,7 +240,7 @@ class StorageService(market_pb2_grpc.StorageServiceServicer):
 
     def AuctionPoll(self, request, context):
         item_id = request.item_id
-        with DATA_LOCK:
+        with DATA_LOCK.read_lock():
             if item_id not in DATA_DF.index:
                 return market_pb2.AuctionEvent(type=market_pb2.AuctionEvent.STATUS_CHANGE, item_snapshot=market_pb2.MarketplaceItem(), event_description="not found")
             row = DATA_DF.loc[item_id]
@@ -214,7 +257,7 @@ def serve():
             resp = stub.GetBackup(market_pb2.BackupRequest(), timeout=5)
             if resp.data:
                 global DATA_DF
-                with DATA_LOCK:
+                with DATA_LOCK.write_lock():
                     DATA_DF = pickle.loads(resp.data)
                 logger.info("Successfully loaded backup from controller.")
     except Exception as e:
